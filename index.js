@@ -14,7 +14,7 @@ app.use(
 );
 const uri = `mongodb+srv://${process.env.MONGODB_USER_NAME}:${process.env.MONGODB_USER_PASS}@cluster0.tyigyp7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -140,34 +140,81 @@ async function run() {
     });
 
     //articles apis
-    app.get("/all-article", async(req, res)=>{
-      const result = await allArticle.find().toArray()
-      res.send(result)
-    })
+    app.get("/all-article", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await allArticle.find().toArray();
+      res.send(result);
+    });
 
-     
-    app.post("/add-article", async(req, res)=>{
-      const postData = req.body
-      const data = {
-        ...postData
-      }
-      const result = await allArticle.insertOne(data)
+    app.get("/all-articles", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await allArticle.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/trending", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await allArticle.find(query).limit(8).sort({views: -1}).toArray();
+      res.send(result);
+    });
+
+    app.get("/article/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id)
+      const filter = { _id: new ObjectId(id), status: "approved"};
+      const result = await allArticle.findOne(filter)
       res.send(result)
-    })
+    });
+
+    app.patch("/article/:id", async (req, res) => {
+      const id = req.params.id;
+      const views = req.body
+      console.log(id, views)
+      const filter = { _id: new ObjectId(id), status: "approved"};
+     const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...views,
+        },
+      };
+      const result = await allArticle.updateOne(filter, updateDoc, options);
+      res.send(result)
+    });
+
+    app.post("/add-article", async (req, res) => {
+      const postData = req.body;
+      const data = {
+        ...postData,
+      };
+      const result = await allArticle.insertOne(data);
+      res.send(result);
+    });
+
+    app.patch("/my-article/:id", async (req, res) => {
+      const articleId = req.params.id;
+      const status = req.body;
+      const filter = { _id: new ObjectId(articleId) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...status,
+        },
+      };
+      const result = await allArticle.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
 
     // publisher api for admin
-    app.get("/publisher", async(req, res)=>{
-      const result = await publishers.find().toArray()
-      res.send(result)
-    })
-    app.post("/publisher",verifyToken, verifyAdmin, async(req, res)=>{
+    app.get("/publisher", async (req, res) => {
+      const result = await publishers.find().toArray();
+      res.send(result);
+    });
+    app.post("/publisher", verifyToken, verifyAdmin, async (req, res) => {
       const publisher = req.body;
-      const data =  {
-        ...publisher
-      }
-      const result = await publishers.insertOne(data)
-      res.send(result)
-    })
+      const data = {
+        ...publisher,
+      };
+      const result = await publishers.insertOne(data);
+      res.send(result);
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
