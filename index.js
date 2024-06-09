@@ -160,7 +160,7 @@ async function run() {
       const result = await publishers.find().toArray()
       res.send(result)
     })
-    app.post("/publisher", async(req, res)=>{
+    app.post("/publisher",verifyToken, verifyAdmin, async(req, res)=>{
       const publisher = req.body;
       const data =  {
         ...publisher
