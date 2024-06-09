@@ -156,12 +156,17 @@ async function run() {
     })
 
     // publisher api for admin
+    app.get("/publisher", async(req, res)=>{
+      const result = await publishers.find().toArray()
+      res.send(result)
+    })
     app.post("/publisher", async(req, res)=>{
       const publisher = req.body;
       const data =  {
         ...publisher
       }
       const result = await publishers.insertOne(data)
+      res.send(result)
     })
 
     console.log(
