@@ -33,38 +33,51 @@ async function run() {
       const token = jwt.sign(user, process.env.SECRET_KEY_TOKEN, {
         expiresIn: "1d",
       });
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({ success: true });
+      res.send({ token });
     });
 
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      res
-        .clearCookie("token", { maxAge: 0, sameSite: "none", secure: true })
-        .send({ message: true });
-    });
+    // custom middlewares
+    const verifyToken = (req, res, next) => {
+      // console.log("inside middlewares", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.SECRET_KEY_TOKEN, (error, decoded) => {
+        if (error) {
+          return res.status(401).send({ message: "Unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden request" });
+      }
+      next();
+    };
 
-    // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
 
     const meganewsDB = client.db("megaNews");
     const usersCollection = meganewsDB.collection("usersCollection");
-
-    app.get("/users", async (req, res) => {
+    const allArticle = meganewsDB.collection("allArticle");
+    const publishers = meganewsDB.collection("publishers");
+    //users api
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
     app.post("/users", async (req, res) => {
       const data = req.body;
-      console.log(data);
       const query = { userEmail: data.userEmail };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
@@ -77,7 +90,36 @@ async function run() {
       const result = await usersCollection.insertOne(userData);
       res.send(result);
     });
-    app.patch("/users/:email", async (req, res) => {
+
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden request" });
+      }
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+    app.get("/users/user/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden request" });
+      }
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      let premium = false;
+      if (user) {
+        admin = user?.type === "premium";
+      }
+      res.send({ premium });
+    });
+    app.patch("/users/:email", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const filter = { userEmail: email };
       const user = req.body;
@@ -85,20 +127,47 @@ async function run() {
       const options = { upsert: true };
       const updateDoc = {
         $set: {
-         ...user
+          ...user,
         },
       };
 
-      const result = await usersCollection.updateOne(filter, updateDoc, options);
-      res.send(result)
-    
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
     });
+
+    //articles apis
+    app.get("/all-article", async(req, res)=>{
+      const result = await allArticle.find().toArray()
+      res.send(result)
+    })
+
+     
+    app.post("/add-article", async(req, res)=>{
+      const postData = req.body
+      const data = {
+        ...postData
+      }
+      const result = await allArticle.insertOne(data)
+      res.send(result)
+    })
+
+    // publisher api for admin
+    app.post("/publisher", async(req, res)=>{
+      const publisher = req.body;
+      const data =  {
+        ...publisher
+      }
+      const result = await publishers.insertOne(data)
+    })
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // Ensures that the client will close when you finish/error
     // await client.close();
   }
 }
