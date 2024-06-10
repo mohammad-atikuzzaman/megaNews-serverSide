@@ -277,6 +277,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/delete-article/:id", async(req, res)=>{
+      const id = req.params.id
+      const filter = {_id: new ObjectId(id)}
+      const result = await allArticle.deleteOne(filter)
+      res.send(result)
+    })
+
     // publisher api for admin
     app.get("/publisher", async (req, res) => {
       const result = await publishers.find().toArray();
