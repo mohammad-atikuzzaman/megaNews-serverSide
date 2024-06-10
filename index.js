@@ -257,6 +257,14 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/authors-article/:email", async (req, res) => {
+      const email = req.params.email;
+      // console.log("email",email)
+      const filter = { authorEmail: email };
+      const result = await allArticle.find(filter).toArray()
+      res.send(result);
+    });
+
     // publisher api for admin
     app.get("/publisher", async (req, res) => {
       const result = await publishers.find().toArray();
