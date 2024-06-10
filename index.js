@@ -51,12 +51,24 @@ async function run() {
         next();
       });
     };
+
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { userEmail: email };
       const user = await usersCollection.findOne(query);
       const isAdmin = user?.role === "admin";
       if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden request" });
+      }
+      next();
+    };
+
+    const verifyPremium = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      const isPremium = user?.type === "premium";
+      if (!isPremium) {
         return res.status(403).send({ message: "Forbidden request" });
       }
       next();
@@ -152,7 +164,7 @@ async function run() {
     });
     app.get("/trending", async (req, res) => {
       const query = { status: "approved" };
-      const result = await allArticle.find(query).limit(8).sort({views: -1}).toArray();
+      const result = await allArticle.find(query).limit(6).sort({views: -1}).toArray();
       res.send(result);
     });
 
@@ -179,7 +191,7 @@ async function run() {
       res.send(result)
     });
 
-    app.post("/add-article", async (req, res) => {
+    app.post("/add-article",verifyToken, async (req, res) => {
       const postData = req.body;
       const data = {
         ...postData,
