@@ -105,7 +105,6 @@ async function run() {
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "Forbidden request" });
       }
@@ -117,6 +116,22 @@ async function run() {
       }
       res.send({ admin });
     });
+
+    app.get("/users/premium/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden request" });
+      }
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      let premium = false;
+      if (user) {
+        premium = user?.type === "premium";
+      }
+
+      res.send({ premium });
+    });
+
     app.get("/users/user/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
 
@@ -162,36 +177,64 @@ async function run() {
       const result = await allArticle.find(query).toArray();
       res.send(result);
     });
+
+    app.get(
+      "/premium-articles",
+      verifyToken,
+      verifyPremium,
+      async (req, res) => {
+        const query = { status: "approved", type: "premium" };
+        const result = await allArticle.find(query).toArray();
+        res.send(result);
+      }
+    );
+
     app.get("/trending", async (req, res) => {
       const query = { status: "approved" };
-      const result = await allArticle.find(query).limit(6).sort({views: -1}).toArray();
+      const result = await allArticle
+        .find(query)
+        .limit(6)
+        .sort({ views: -1 })
+        .toArray();
       res.send(result);
     });
 
     app.get("/article/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id)
-      const filter = { _id: new ObjectId(id), status: "approved"};
-      const result = await allArticle.findOne(filter)
-      res.send(result)
+      const email = req.query?.email;
+
+      const cursor = { userEmail: email };
+      console.log(email);
+      const filter = { _id: new ObjectId(id), status: "approved" };
+
+      const result = await allArticle.findOne(filter);
+      const user = await usersCollection.findOne(cursor);
+
+      console.log(result?.type);
+      console.log(user?.type);
+      if (result?.type === "premium") {
+        if (result?.type !== user?.type) {
+          return res.status(403).send({ message: "Forbidden Request" });
+        }
+      }
+      res.send(result);
     });
 
     app.patch("/article/:id", async (req, res) => {
       const id = req.params.id;
-      const views = req.body
-      console.log(id, views)
-      const filter = { _id: new ObjectId(id), status: "approved"};
-     const options = { upsert: true };
+      const views = req.body;
+      const filter = { _id: new ObjectId(id), status: "approved" };
+      const options = { upsert: true };
       const updateDoc = {
         $set: {
           ...views,
         },
       };
       const result = await allArticle.updateOne(filter, updateDoc, options);
-      res.send(result)
+      res.send(result);
     });
 
-    app.post("/add-article",verifyToken, async (req, res) => {
+    app.post("/add-article", verifyToken, async (req, res) => {
       const postData = req.body;
       const data = {
         ...postData,
