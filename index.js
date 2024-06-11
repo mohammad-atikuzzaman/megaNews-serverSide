@@ -188,6 +188,25 @@ async function run() {
       );
       res.send(result);
     });
+    app.patch("/usersPremium/:email",verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const filter = { userEmail: email };
+      const user = req.body;
+      // console.log(user, email);
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...user,
+        },
+      };
+
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
 
     //articles apis
     app.get("/all-article", verifyToken, verifyAdmin, async (req, res) => {
@@ -341,6 +360,12 @@ async function run() {
       const result = await price.findOne({ email: userEmail });
       res.send(result);
     });
+
+    app.delete("/price/:email", async(req, res)=>{
+      const reqEmail = req.params.email
+      const result = await price.deleteOne({email: reqEmail})
+      res.send(result)
+    })
 
     //payments api for gatway
     app.post("/create-payment-intent", async (req, res) => {
