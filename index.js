@@ -169,6 +169,15 @@ async function run() {
       }
       res.send({ premium });
     });
+  app.get("/userPremium/:email", async(req, res)=>{
+    const reqEmail = req.params.email
+    const result = await usersCollection.findOne({userEmail : reqEmail})
+    if(result?.type !== "premium"){
+      return res.send({type : null})
+    }
+    res.send({type : result?.type, planTime: result?.planTime, timeOfGetPlan : result?.timeOfGetPlan})
+  })
+
     app.patch("/users/:email", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const filter = { userEmail: email };
@@ -188,11 +197,10 @@ async function run() {
       );
       res.send(result);
     });
-    app.patch("/usersPremium/:email",verifyToken, async (req, res) => {
+    app.patch("/usersPremium/:email", async (req, res) => {
       const email = req.params.email;
       const filter = { userEmail: email };
       const user = req.body;
-      // console.log(user, email);
       const options = { upsert: true };
       const updateDoc = {
         $set: {
