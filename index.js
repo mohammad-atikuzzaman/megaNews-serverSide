@@ -1,10 +1,16 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+// const stripe = require("stripe")(process.env.PAYMENT_KEY);
 require("dotenv").config();
 const app = express();
-const port = 5000;
 
+const stripe = require("stripe")(
+  "sk_test_51PQQrjHeLdNaXJDi1lfCxyCfJoJiEp6kCQM5w6neZzD7xSaebcvvqni60wOjqd3h1Fpc2VMfSFkqR15O5l3UW4pO00mawyQhmY"
+);
+const port = process.env.PORT || 5000;
+
+app.use(express.static("public"));
 app.use(express.json());
 app.use(
   cors({
@@ -82,15 +88,21 @@ async function run() {
     const usersCollection = meganewsDB.collection("usersCollection");
     const allArticle = meganewsDB.collection("allArticle");
     const publishers = meganewsDB.collection("publishers");
+    const price = meganewsDB.collection("price");
 
     //statistics api
-    app.get("/statistics",async(req, res)=>{
-      const totalUserCount = await usersCollection.countDocuments()
-      const premiumUserCount = await usersCollection.countDocuments({type: "premium"})
+    app.get("/statistics", async (req, res) => {
+      const totalUserCount = await usersCollection.countDocuments();
+      const premiumUserCount = await usersCollection.countDocuments({
+        type: "premium",
+      });
 
-      const doc = {totalUser : totalUserCount,premiumUser : premiumUserCount, freeUser: totalUserCount - premiumUserCount }
-      console.log(doc)
-      res.send(doc)
+      const doc = {
+        totalUser: totalUserCount,
+        premiumUser: premiumUserCount,
+        freeUser: totalUserCount - premiumUserCount,
+      };
+      res.send(doc);
     });
 
     //users api
@@ -161,7 +173,7 @@ async function run() {
       const email = req.params.email;
       const filter = { userEmail: email };
       const user = req.body;
-      console.log(user, email);
+      // console.log(user, email);
       const options = { upsert: true };
       const updateDoc = {
         $set: {
@@ -215,12 +227,12 @@ async function run() {
       const email = req.query?.email;
 
       const cursor = { userEmail: email };
-      console.log(email);
+      // console.log(email);
       const filter = { _id: new ObjectId(id), status: "approved" };
 
       const result = await allArticle.findOne(filter);
       const user = await usersCollection.findOne(cursor);
-      console.log(user?.type);
+      // console.log(user?.type);
       if (result?.type === "premium") {
         if (result?.type !== user?.type) {
           return res.status(403).send({ message: "Forbidden Request" });
@@ -307,6 +319,43 @@ async function run() {
       };
       const result = await publishers.insertOne(data);
       res.send(result);
+    });
+
+    //payment api for product price
+    app.post("/price", async (req, res) => {
+      const priceData = req.body;
+      const data = {
+        ...priceData,
+      };
+      const emailReq = req.body.email;
+      const exist = await price.findOne({ email: emailReq });
+      if (exist) {
+        return res.send({ message: "already exist" });
+      }
+      const result = await price.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/price/:email", async (req, res) => {
+      const userEmail = req.params.email;
+      const result = await price.findOne({ email: userEmail });
+      res.send(result);
+    });
+
+    //payments api for gatway
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card", "link"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
     console.log(
