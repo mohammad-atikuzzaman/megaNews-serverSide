@@ -82,6 +82,17 @@ async function run() {
     const usersCollection = meganewsDB.collection("usersCollection");
     const allArticle = meganewsDB.collection("allArticle");
     const publishers = meganewsDB.collection("publishers");
+
+    //statistics api
+    app.get("/statistics",async(req, res)=>{
+      const totalUserCount = await usersCollection.countDocuments()
+      const premiumUserCount = await usersCollection.countDocuments({type: "premium"})
+
+      const doc = {totalUser : totalUserCount,premiumUser : premiumUserCount, freeUser: totalUserCount - premiumUserCount }
+      console.log(doc)
+      res.send(doc)
+    });
+
     //users api
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -218,7 +229,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/update-article/:id",verifyToken, async (req, res) => {
+    app.patch("/update-article/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -255,7 +266,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/my-article/:id",verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/my-article/:id", verifyToken, verifyAdmin, async (req, res) => {
       const articleId = req.params.id;
       const status = req.body;
       const filter = { _id: new ObjectId(articleId) };
@@ -269,7 +280,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/authors-article/:email",verifyToken, async (req, res) => {
+    app.get("/authors-article/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       // console.log("email",email)
       const filter = { authorEmail: email };
@@ -277,12 +288,12 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/delete-article/:id", async(req, res)=>{
-      const id = req.params.id
-      const filter = {_id: new ObjectId(id)}
-      const result = await allArticle.deleteOne(filter)
-      res.send(result)
-    })
+    app.delete("/delete-article/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await allArticle.deleteOne(filter);
+      res.send(result);
+    });
 
     // publisher api for admin
     app.get("/publisher", async (req, res) => {
