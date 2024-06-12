@@ -11,7 +11,11 @@ app.use(express.static("public"));
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://meganewsss.web.app",
+      "https://meganewsss.firebaseapp.com",
+    ],
     credentials: true,
   })
 );
@@ -443,7 +447,7 @@ async function run() {
     });
 
     //admin dashboard api for chart
-    app.get("/publisher-article-count", async (req, res) => {
+    app.get("/publisher-article-count",verifyToken, verifyAdmin, async (req, res) => {
       try {
         const aggregation = [
           {
