@@ -183,7 +183,6 @@ async function run() {
       const email = req.params.email;
       const filter = { userEmail: email };
       const user = req.body;
-      // console.log(user, email);
       const options = { upsert: true };
       const updateDoc = {
         $set: {
@@ -198,7 +197,8 @@ async function run() {
       );
       res.send(result);
     });
-    app.patch("/usersPremium/:email", async (req, res) => {
+
+    app.patch("/usersPremium/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const filter = { userEmail: email };
       const user = req.body;
@@ -216,6 +216,26 @@ async function run() {
       );
       res.send(result);
     });
+
+    //update user
+    // app.patch("/updateUsersProfile/:email",verifyToken, async (req, res) => {
+    //   const email = req.params.email;
+    //   const filter = { userEmail: email };
+    //   const user = req.body;
+    //   const options = { upsert: true };
+    //   const updateDoc = {
+    //     $set: {
+    //       ...user,
+    //     },
+    //   };
+
+    //   const result = await usersCollection.updateOne(
+    //     filter,
+    //     updateDoc,
+    //     options
+    //   );
+    //   res.send(result);
+    // });
 
     //articles apis
     app.get("/all-article", verifyToken, verifyAdmin, async (req, res) => {
@@ -302,6 +322,18 @@ async function run() {
       const data = {
         ...postData,
       };
+      const author = await usersCollection.findOne({
+        userEmail: postData?.authorEmail,
+      });
+      const postIsExist = await allArticle.countDocuments({
+        authorEmail: postData?.authorEmail,
+      });
+      // console.log(postIsExist);
+      if (postIsExist >= 1) {
+        if(author?.type !== "premium"){
+          return res.send({message: "Please take a subscription to post another article"})
+        }
+      }
       const result = await allArticle.insertOne(data);
       res.send(result);
     });
