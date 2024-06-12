@@ -1,13 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-// const stripe = require("stripe")(process.env.PAYMENT_KEY);
 require("dotenv").config();
 const app = express();
 
-const stripe = require("stripe")(
-  "sk_test_51PQQrjHeLdNaXJDi1lfCxyCfJoJiEp6kCQM5w6neZzD7xSaebcvvqni60wOjqd3h1Fpc2VMfSFkqR15O5l3UW4pO00mawyQhmY"
-);
+const stripe = require("stripe")(process.env.PAYMENT_KEY);
 const port = process.env.PORT || 5000;
 
 app.use(express.static("public"));
@@ -169,14 +166,18 @@ async function run() {
       }
       res.send({ premium });
     });
-  app.get("/userPremium/:email", async(req, res)=>{
-    const reqEmail = req.params.email
-    const result = await usersCollection.findOne({userEmail : reqEmail})
-    if(result?.type !== "premium"){
-      return res.send({type : null})
-    }
-    res.send({type : result?.type, planTime: result?.planTime, timeOfGetPlan : result?.timeOfGetPlan})
-  })
+    app.get("/userPremium/:email", async (req, res) => {
+      const reqEmail = req.params.email;
+      const result = await usersCollection.findOne({ userEmail: reqEmail });
+      if (result?.type !== "premium") {
+        return res.send({ type: null });
+      }
+      res.send({
+        type: result?.type,
+        planTime: result?.planTime,
+        timeOfGetPlan: result?.timeOfGetPlan,
+      });
+    });
 
     app.patch("/users/:email", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
@@ -369,11 +370,11 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/price/:email", async(req, res)=>{
-      const reqEmail = req.params.email
-      const result = await price.deleteOne({email: reqEmail})
-      res.send(result)
-    })
+    app.delete("/price/:email", async (req, res) => {
+      const reqEmail = req.params.email;
+      const result = await price.deleteOne({ email: reqEmail });
+      res.send(result);
+    });
 
     //payments api for gatway
     app.post("/create-payment-intent", async (req, res) => {
