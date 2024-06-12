@@ -346,8 +346,10 @@ async function run() {
       });
       // console.log(postIsExist);
       if (postIsExist >= 1) {
-        if(author?.type !== "premium"){
-          return res.send({message: "Please take a subscription to post another article"})
+        if (author?.type !== "premium") {
+          return res.send({
+            message: "Please take a subscription to post another article",
+          });
         }
       }
       const result = await allArticle.insertOne(data);
@@ -438,6 +440,35 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    });
+
+    //admin dashboard api for chart
+    app.get("/publisher-article-count", async (req, res) => {
+      try {
+        const aggregation = [
+          {
+            $group: {
+              _id: "$publisher",
+              articleCount: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              publisher: "$_id",
+              articleCount: 1,
+            },
+          },
+        ];
+        const result = await allArticle.aggregate(aggregation).toArray();
+        const formattedResult = result.map((item) => [
+          item.publisher,
+          item.articleCount,
+        ]);
+        formattedResult.unshift(["Publisher", "Articles"]);
+        res.send(formattedResult);
+      } catch (error) {
+        res.send("eerror");
+      }
     });
 
     console.log(
