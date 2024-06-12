@@ -248,6 +248,22 @@ async function run() {
       const result = await allArticle.find(query).toArray();
       res.send(result);
     });
+    app.get("/all-filtered-articles/:publisher", async (req, res) => {
+      const publisher = req.params.publisher;
+      const query = { status: "approved", publisher: publisher };
+      const result = await allArticle.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/all-searched-articles/:search", async (req, res) => {
+      const search = req.params.search;
+      const query = {
+        status: "approved",
+        title: { $regex: search, $options: "i" },
+      };
+      const result = await allArticle.find(query).toArray();
+      res.send(result);
+    });
 
     app.get(
       "/premium-articles",
