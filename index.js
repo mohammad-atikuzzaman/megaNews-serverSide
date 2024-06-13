@@ -106,25 +106,33 @@ async function run() {
       res.send(doc);
     });
 
-    app.get("/article-count", async(req, res)=>{
-      const totalArticle = await allArticle.countDocuments()
+    app.get("/article-count", async (req, res) => {
+      const totalArticle = await allArticle.countDocuments();
       const doc = {
-        count : totalArticle
-      }
-      res.send(doc)
-    })
-    
-    app.get("/user-count", async(req, res)=>{
-      const users = await usersCollection.countDocuments()
+        count: totalArticle,
+      };
+      res.send(doc);
+    });
+
+    app.get("/user-count", async (req, res) => {
+      const users = await usersCollection.countDocuments();
       const doc = {
-        count : users
-      }
-      res.send(doc)
-    })
+        count: users,
+      };
+      res.send(doc);
+    });
 
     //users api
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await usersCollection.find().toArray();
+      // console.log("pagination query",req.query)
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      // console.log(page, size)
+      const result = await usersCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
     });
 
@@ -236,7 +244,14 @@ async function run() {
 
     //articles apis
     app.get("/all-article", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await allArticle.find().toArray();
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      // console.log(page, size)
+      const result = await allArticle
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
     });
 
