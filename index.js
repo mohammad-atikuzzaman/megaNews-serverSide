@@ -106,6 +106,22 @@ async function run() {
       res.send(doc);
     });
 
+    app.get("/article-count", async(req, res)=>{
+      const totalArticle = await allArticle.countDocuments()
+      const doc = {
+        count : totalArticle
+      }
+      res.send(doc)
+    })
+    
+    app.get("/user-count", async(req, res)=>{
+      const users = await usersCollection.countDocuments()
+      const doc = {
+        count : users
+      }
+      res.send(doc)
+    })
+
     //users api
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -127,11 +143,9 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+    // checking user is admin or not
+    app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: "Forbidden request" });
-      }
       const query = { userEmail: email };
       const user = await usersCollection.findOne(query);
       let admin = false;
@@ -141,11 +155,9 @@ async function run() {
       res.send({ admin });
     });
 
-    app.get("/users/premium/:email", verifyToken, async (req, res) => {
+    // checking user is premium or not
+    app.get("/users/premium/:email", async (req, res) => {
       const email = req.params.email;
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: "Forbidden request" });
-      }
       const query = { userEmail: email };
       const user = await usersCollection.findOne(query);
       let premium = false;
@@ -170,6 +182,7 @@ async function run() {
       }
       res.send({ premium });
     });
+
     app.get("/userPremium/:email", async (req, res) => {
       const reqEmail = req.params.email;
       const result = await usersCollection.findOne({ userEmail: reqEmail });
@@ -220,26 +233,6 @@ async function run() {
       );
       res.send(result);
     });
-
-    //update user
-    // app.patch("/updateUsersProfile/:email",verifyToken, async (req, res) => {
-    //   const email = req.params.email;
-    //   const filter = { userEmail: email };
-    //   const user = req.body;
-    //   const options = { upsert: true };
-    //   const updateDoc = {
-    //     $set: {
-    //       ...user,
-    //     },
-    //   };
-
-    //   const result = await usersCollection.updateOne(
-    //     filter,
-    //     updateDoc,
-    //     options
-    //   );
-    //   res.send(result);
-    // });
 
     //articles apis
     app.get("/all-article", verifyToken, verifyAdmin, async (req, res) => {
@@ -447,33 +440,38 @@ async function run() {
     });
 
     //admin dashboard api for chart
-    app.get("/publisher-article-count",verifyToken, verifyAdmin, async (req, res) => {
-      try {
-        const aggregation = [
-          {
-            $group: {
-              _id: "$publisher",
-              articleCount: { $sum: 1 },
+    app.get(
+      "/publisher-article-count",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const aggregation = [
+            {
+              $group: {
+                _id: "$publisher",
+                articleCount: { $sum: 1 },
+              },
             },
-          },
-          {
-            $project: {
-              publisher: "$_id",
-              articleCount: 1,
+            {
+              $project: {
+                publisher: "$_id",
+                articleCount: 1,
+              },
             },
-          },
-        ];
-        const result = await allArticle.aggregate(aggregation).toArray();
-        const formattedResult = result.map((item) => [
-          item.publisher,
-          item.articleCount,
-        ]);
-        formattedResult.unshift(["Publisher", "Articles"]);
-        res.send(formattedResult);
-      } catch (error) {
-        res.send("eerror");
+          ];
+          const result = await allArticle.aggregate(aggregation).toArray();
+          const formattedResult = result.map((item) => [
+            item.publisher,
+            item.articleCount,
+          ]);
+          formattedResult.unshift(["Publisher", "Articles"]);
+          res.send(formattedResult);
+        } catch (error) {
+          res.send("eerror");
+        }
       }
-    });
+    );
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
